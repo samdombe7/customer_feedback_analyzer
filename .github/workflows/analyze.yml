@@ -2,11 +2,11 @@ name: Daily Feedback Analyzer
 
 on:
   schedule:
-    - cron: "0 9 * * *"   # every day at 9 AM
-  workflow_dispatch:      # allow manual trigger too
+    - cron: "0 9 * * *"
+  workflow_dispatch:
 
 permissions:
-  contents: write         # needed to push changes back to the repo
+  contents: write
 
 jobs:
   analyze:
