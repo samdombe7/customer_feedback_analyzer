@@ -1,24 +1,52 @@
 name: Daily Feedback Analyzer
+
 on:
   schedule:
     - cron: "0 9 * * *"   # every day at 9 AM
+  workflow_dispatch:      # allow manual trigger too
+
+permissions:
+  contents: write         # ✅ needed for pushing changes
+
 jobs:
   analyze:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-      - run: |
+
+      - name: Run feedback analyzer scripts
+        run: |
           pip install -r requirements.txt
           python fetch_github_issues.py
           python run_analysis.py
           python chatops_feedback_alerts.py
+
+      - name: Show alerts.log content in console
+        if: success()
+        run: |
+          echo "==== 🪵 ALERTS LOG OUTPUT ===="
+          cat alerts.log || echo "alerts.log not found"
+
+      - name: Upload alerts.log as artifact
+        if: success()
+        uses: actions/upload-artifact@v3
+        with:
+          name: alerts-log
+          path: alerts.log
+
       - name: Commit results
         run: |
           git config --global user.name "FeedbackBot"
           git config --global user.email "bot@example.com"
-          git add *.csv *.png alerts.log
-          git commit -m "Auto-update feedback analysis"
-          git push
+          git add *.csv *.png alerts.log || true
+          git diff --cached --quiet && echo "No changes to commit" || git commit -m "Auto-update feedback analysis [bot]"
+          git push origin HEAD:${{ github.ref_name }}
